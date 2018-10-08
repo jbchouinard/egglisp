@@ -1,0 +1,13 @@
+{
+  "name": "egglisp",
+  "description": "A simple lisp dialect based on the Egg project from EloquentJS",
+  "version": "0.1.0",
+  "repository": "github:jbchouinard/egglisp",
+  "license": "MIT",
+  "dependencies": {
+    "@types/argparse": "^1.0.35",
+    "@types/node": "^8.10.34",
+    "argparse": "^1.0.10",
+    "typescript": "^3.1.1"
+  }
+}
