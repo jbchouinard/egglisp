@@ -19,10 +19,10 @@ tsc
 node dist/egglisp -i
 
 # Run script
-node dist/egglisp lang/func.egglisp
+node dist/egglisp dostuff.egglisp
 
 # Run script then REPL
-node dist/egglisp -i lang/func.egglisp
+node dist/egglisp -i dostuff.egglisp
 ```
 
 ## Debug Parser
