@@ -114,7 +114,7 @@ export class EggParser {
                 expression = this.symbol();
                 break;
             case T.LPAR:
-                expression = this.sexpr();
+                expression = this.list();
                 break;
             default:
                 throw SyntaxError(`Unexpected token ${this.peek.type} at ${this.loc}`)
@@ -133,7 +133,7 @@ export class EggParser {
         let sym = this.expect(T.SYM);
         return types.symbol(sym.name);
     }
-    sexpr(): types.EggValue {
+    list(): types.EggValue {
         this.expect(T.LPAR);
         this.eat(T.WS);
         if (this.eat(T.RPAR)) { return types.NIL; }

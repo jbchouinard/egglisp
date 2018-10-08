@@ -1,6 +1,6 @@
 import Env from "./env";
-import { RuntimeError } from "./errors";
-import { eggEval, getArgs } from "./evaluator";
+import { ArgumentError } from "./errors";
+import { repr, eggEval, getArgs, getVarArgs } from "./evaluator";
 import {
     NIL, TRUE, FALSE, EggValue, Type, typeAssert,
     bool, string, number, builtin, specialform, func, list, FBuiltin
@@ -8,7 +8,7 @@ import {
 
 
 // Built-ins
-function add(args: EggValue): EggValue {
+function fAdd(args: EggValue): EggValue {
     let acc = 0;
     while (args !== NIL) {
         typeAssert(args.head, Type.NUMBER, Type.BOOLEAN);
@@ -18,7 +18,7 @@ function add(args: EggValue): EggValue {
     return number(acc);
 }
 
-function concat(args: EggValue): EggValue {
+function fConcat(args: EggValue): EggValue {
     let parts = [];
     while (args !== NIL) {
         typeAssert(args.head, Type.STRING);
@@ -28,61 +28,64 @@ function concat(args: EggValue): EggValue {
     return string(String.prototype.concat(...parts));
 }
 
-function isNil(args: EggValue): EggValue {
+function fIsNil(args: EggValue): EggValue {
     const arg = getArgs(args, 1)[0];
     return bool(arg === NIL);
 }
 
-function flist(args: EggValue): EggValue {
+function fList(args: EggValue): EggValue {
     return args;
 }
 
-function head(args: EggValue): EggValue {
+function fHead(args: EggValue): EggValue {
     const arg = getArgs(args, 1)[0];
     typeAssert(args, Type.LIST);
     if (arg === NIL) {
-        throw new RuntimeError('Cannot take head of empty list (nil)');
+        throw new ArgumentError('Cannot take head of empty list (nil)');
     }
     return arg.head;
 }
 
-function tail(args: EggValue): EggValue {
+function fTail(args: EggValue): EggValue {
     const arg = getArgs(args, 1)[0];
     typeAssert(arg, Type.LIST);
     if (arg === NIL) {
-        throw new RuntimeError('Cannot take tail of empty list (nil)');
+        throw new ArgumentError('Cannot take tail of empty list (nil)');
     }
     return arg.tail;
 }
 
-function cons(args: EggValue): EggValue {
+function fCons(args: EggValue): EggValue {
     const [value, rest] = getArgs(args, 2);
     typeAssert(rest, Type.LIST);
     return list(value, rest);
 }
 
-function def(args: EggValue, env: Env): EggValue {
+function fBody(args: EggValue): EggValue {
+    const arg = getArgs(args, 1)[0];
+    typeAssert(arg, Type.FUNCTION);
+    return arg.body;
+}
+
+function fEval(args: EggValue, env: Env): EggValue {
+    return eggEval(getArgs(args, 1)[0], env);
+}
+
+function fPrint(args: EggValue): EggValue {
+    const argsArr = getVarArgs(args);
+    console.log(...argsArr.map(repr));
+    return NIL;
+}
+
+// Special Forms: receive their arguments unevaluated
+function sDef(args: EggValue, env: Env): EggValue {
     const [symbol, value] = getArgs(args, 2);
     typeAssert(symbol, Type.SYMBOL);
     env.set(symbol.name, eggEval(value, env));
     return NIL;
 }
 
-function body(args: EggValue): EggValue {
-    const arg = getArgs(args, 1)[0];
-    typeAssert(arg, Type.FUNCTION);
-    return arg.body;
-}
-
-// function closure(args: EggValue): Env {
-//     const arg = getArgs(args, 1)[0];
-//     typeAssert(arg, Type.FUNCTION);
-//     return arg.closure;
-// }
-
-
-// Special Forms: receive their arguments unevaluated
-function f(args: EggValue, env: Env): EggValue {
+function sFunc(args: EggValue, env: Env): EggValue {
     let [symbols, body] = getArgs(args, 2);
     const symArray = [];
     while (symbols !== NIL) {
@@ -93,12 +96,19 @@ function f(args: EggValue, env: Env): EggValue {
     return func(body, symArray, env)
 }
 
-function quote(args: EggValue): EggValue {
+function sQuote(args: EggValue): EggValue {
     return getArgs(args, 1)[0];
 }
 
-function feval(args: EggValue, env: Env): EggValue {
-    return eggEval(getArgs(args, 1)[0], env);
+function sIf(args: EggValue, env: Env): EggValue {
+    let [cond, iftrue, iffalse] = getArgs(args, 3);
+    cond = eggEval(cond, env);
+    if (cond === TRUE) {
+        return eggEval(iftrue, env);
+    } else if (cond === FALSE) {
+        return eggEval(iffalse, env);
+    }
+    throw new ArgumentError("First argument must be boolean");
 }
 
 function addFunc(env:Env, name: string, func: FBuiltin) {
@@ -114,26 +124,27 @@ export function addBuiltins(env: Env) {
     env.set("nil", NIL);
     env.set("true", TRUE);
     env.set("false", FALSE);
-    addSpecialForm(env, "def", def);
-    addSpecialForm(env, "f", f);
+    addSpecialForm(env, "def", sDef);
+    addSpecialForm(env, "f", sFunc);
+    addSpecialForm(env, "if", sIf);
+    addFunc(env, "print", fPrint);
 
     // List functions
-    addFunc(env, "cons", cons);
-    addFunc(env, "list", flist);
-    addFunc(env, "head", head);
-    addFunc(env, "tail", tail);
-    addFunc(env, "nil?", isNil);
+    addFunc(env, "cons", fCons);
+    addFunc(env, "list", fList);
+    addFunc(env, "head", fHead);
+    addFunc(env, "tail", fTail);
+    addFunc(env, "nil?", fIsNil);
 
     // Arithmetic functions
-    addFunc(env, "+", add);
+    addFunc(env, "+", fAdd);
 
     // String functions
-    addFunc(env, "concat", concat);
+    addFunc(env, "concat", fConcat);
 
     // Meta-programming
-    addSpecialForm(env, "quote", quote);
-    addFunc(env, "eval", feval);
-    addFunc(env, "body", body);
-    // env.set("closure", builtin(closure));
+    addSpecialForm(env, "quote", sQuote);
+    addFunc(env, "eval", fEval);
+    addFunc(env, "body", fBody);
 }
 

@@ -1,6 +1,5 @@
-import { RuntimeError } from "./errors";
+import { ArgumentError, RuntimeError } from "./errors";
 import { EggValue, Type, typeOf, typeAssert, NIL, FALSE } from "./types";
-import { EggParser, T } from "./parser";
 import Env from "./env";
 
 function repr_env(env: Env): string {
@@ -67,13 +66,23 @@ export function getArgs(list: EggValue, n: number): Array<EggValue> {
     const values = [];
     for(let i = 0; i < n; i++) {
         if (list === NIL) {
-            throw new RuntimeError(`Too few arguments, expected ${n}`);
+            throw new ArgumentError(`Too few arguments, expected ${n}`);
         }
         values.push(list.head);
         list = list.tail;
     }
     if (list !== NIL) {
-        throw new RuntimeError(`Too many arguments, expected ${n}`);
+        throw new ArgumentError(`Too many arguments, expected ${n}`);
+    }
+    return values;
+}
+
+export function getVarArgs(list: EggValue): Array<EggValue> {
+    typeAssert(list, Type.LIST);
+    const values = [];
+    while (list !== NIL) {
+        values.push(list.head);
+        list = list.tail;
     }
     return values;
 }

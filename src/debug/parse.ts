@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import { EggParser } from "../parser";
 import * as readline from "readline";
 

@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 import * as fs from "fs";
 import * as path from "path";
 import * as readline from "readline";
@@ -27,7 +28,7 @@ glob(path.join(__dirname, 'lang/*.egglisp'), function(err, filenames) {
 // Exec CLI-specified scripts
 args.scripts.forEach(execFile);
 
-if (args.interactive) {
+if (args.interactive || args.scripts.length === 0) {
     repl();
 }
 
