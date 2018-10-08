@@ -6,13 +6,17 @@ const glob = require("glob");
 
 import Env from "./env";
 import { addBuiltins } from "./builtins";
-import { eggEval, eggExec, repr } from "./evaluator";
-import { EggParser } from "./parser";
+import { eggEval, repr } from "./evaluator";
+import { EggParser, T } from "./parser";
 
 const argparser = new ArgumentParser({description: "egglisp v0.1.0"});
 argparser.addArgument(["-i", "--interactive"], {action: "storeTrue", help: "Start REPL"});
 argparser.addArgument("scripts", {nargs: '*'});
 const args = argparser.parseArgs();
+
+// Create global env
+const env = new Env(null);
+addBuiltins(env);
 
 // Exec language files
 glob(path.join(__dirname, 'lang/*.egglisp'), function(err, filenames) {
@@ -27,12 +31,21 @@ if (args.interactive) {
     repl();
 }
 
-const env = new Env(null);
-addBuiltins(env);
-
 function execFile(filename) {
     const script = fs.readFileSync(filename, "utf8");
-    eggExec(script, env);
+    const parser = new EggParser();
+    parser.readString(script);
+    try {
+        while (!parser.done()) {
+            eggEval(parser.expr(), env);
+            if (!parser.done()) {
+                parser.expect(T.WS)
+            }
+        }
+    } catch(err) {
+        console.log(`Error at line ${parser.loc()}`);
+        console.log(err.message);
+    }
 }
 
 function repl() {

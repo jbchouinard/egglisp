@@ -62,17 +62,6 @@ export function eggEval(value: EggValue, env: Env): EggValue {
     }
 }
 
-export function eggExec(code: string, env: Env) {
-    const parser = new EggParser();
-    parser.readString(code);
-    while (!parser.done()) {
-        eggEval(parser.expr(), env);
-        if (!parser.done()) {
-            parser.expect(T.WS)
-        }
-    }
-}
-
 export function getArgs(list: EggValue, n: number): Array<EggValue> {
     typeAssert(list, Type.LIST);
     const values = [];
