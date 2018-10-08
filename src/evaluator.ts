@@ -29,8 +29,12 @@ export function repr(value: EggValue | Env): string {
             return `"${value.strValue}"`;
         case Type.SYMBOL:
             return `${value.name}`;
+        case Type.BUILTIN:
+            return `<builtin function "${value.name}">`;
+        case Type.SPECIALFORM:
+            return `<builtin macro "${value.name}">`;
         case Type.FUNCTION:
-            return `<function (${value.params.join(' ')})>`;
+            return `<function on (${value.params.join(' ')})>`;
         case Type.LIST:
             const parts = [];
             while (value.tail !== null) {

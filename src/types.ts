@@ -47,10 +47,11 @@ export function typeAssert(value: EggValue, ...types: Array<Type>) {
     throw new TypeError(`Expected value of type ${types}, got ${value.type}`)
 }
 
-export function specialform(func): EggValue {
+export function specialform(func, name): EggValue {
     return {
         type: Type.SPECIALFORM,
-        func: func
+        func: func,
+        name: name
     }
 }
 export function bool(value: number | boolean): EggValue {
@@ -59,10 +60,11 @@ export function bool(value: number | boolean): EggValue {
     }
     return TRUE;
 }
-export function builtin(func): EggValue {
+export function builtin(func, name): EggValue {
     return {
         type: Type.BUILTIN,
         func: func,
+        name: name
     }
 }
 export function func(body, params, closure): EggValue {

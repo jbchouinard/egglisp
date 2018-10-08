@@ -9,7 +9,7 @@ but is now much different.
 git clone https://github.com/jbchouinard/egglisp.git
 cd egglisp
 npm install
-./node_modules/.bin/tsc
+tsc
 ```
 
 ## Run
@@ -23,4 +23,10 @@ node dist/egglisp lang/func.egglisp
 
 # Run script then REPL
 node dist/egglisp -i lang/func.egglisp
+```
+
+## Debug Parser
+```bash
+node dist/debug/tokenize.js
+node dist/debug/parse.js
 ```

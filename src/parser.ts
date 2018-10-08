@@ -18,7 +18,7 @@ interface Token {
     readonly colno:  number
 }
 
-function* tokenize(text: string): IterableIterator<Token> {
+export function* tokenize(text: string): IterableIterator<Token> {
     let match;
     let lineno = 1;
     let colno = 1;
@@ -41,7 +41,7 @@ function* tokenize(text: string): IterableIterator<Token> {
                 yield {type: T.LPAR, lineno: lineno, colno: colno}
             } else if (match = /^\)/.exec(text)) {
                 yield {type: T.RPAR, lineno: lineno, colno: colno}
-            } else if (match = /^(([a-zA-Z_][a-zA-Z_!?\-\d]*)|([+\-\\/<>=]+))/.exec(text)) {
+            } else if (match = /^(([a-zA-Z_][a-zA-Z_!?\-\d]*)|([+\-\\/<>=*]+))/.exec(text)) {
                 yield {type: T.SYM, name: match[1], lineno: lineno, colno: colno}
             } else {
                 throw SyntaxError(`Unexpected syntax at ${lineno}:${colno}`);

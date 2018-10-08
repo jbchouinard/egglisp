@@ -11,7 +11,7 @@ export default class Env {
     get(name: string): EggValue {
         if (this.bindings.has(name)) {
             return this.bindings.get(name);
-        } else if (this.parent !== undefined) {
+        } else if (this.parent !== null) {
             return this.parent.get(name);
         } else {
             throw new RuntimeError(`${name} is undefined`);

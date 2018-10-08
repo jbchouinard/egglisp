@@ -3,7 +3,7 @@ import { RuntimeError } from "./errors";
 import { eggEval, getArgs } from "./evaluator";
 import {
     NIL, TRUE, FALSE, EggValue, Type, typeAssert,
-    bool, string, number, builtin, specialform, func, list
+    bool, string, number, builtin, specialform, func, list, FBuiltin
 } from "./types";
 
 
@@ -101,32 +101,39 @@ function feval(args: EggValue, env: Env): EggValue {
     return eggEval(getArgs(args, 1)[0], env);
 }
 
+function addFunc(env:Env, name: string, func: FBuiltin) {
+    env.set(name, builtin(func, name));
+}
+
+function addSpecialForm(env: Env, name: string, func: FBuiltin) {
+    env.set(name, specialform(func, name));
+}
 
 export function addBuiltins(env: Env) {
     // Language basics
     env.set("nil", NIL);
     env.set("true", TRUE);
     env.set("false", FALSE);
-    env.set("def", specialform(def));
-    env.set("f", specialform(f));
+    addSpecialForm(env, "def", def);
+    addSpecialForm(env, "f", f);
 
     // List functions
-    env.set("cons", builtin(cons));
-    env.set("list", builtin(flist));
-    env.set("head", builtin(head));
-    env.set("tail", builtin(tail));
-    env.set("nil?", builtin(isNil));
+    addFunc(env, "cons", cons);
+    addFunc(env, "list", flist);
+    addFunc(env, "head", head);
+    addFunc(env, "tail", tail);
+    addFunc(env, "nil?", isNil);
 
     // Arithmetic functions
-    env.set("+", builtin(add));
+    addFunc(env, "+", add);
 
     // String functions
-    env.set("concat", builtin(concat));
+    addFunc(env, "concat", concat);
 
     // Meta-programming
-    env.set("quote", specialform(quote));
-    env.set("eval", builtin(feval));
-    env.set("body", builtin(body));
+    addSpecialForm(env, "quote", quote);
+    addFunc(env, "eval", feval);
+    addFunc(env, "body", body);
     // env.set("closure", builtin(closure));
 }
 
