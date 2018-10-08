@@ -3,7 +3,6 @@ import * as fs from "fs";
 import * as path from "path";
 import * as readline from "readline";
 import { ArgumentParser } from "argparse";
-const glob = require("glob");
 
 import Env from "./env";
 import { addBuiltins } from "./builtins";
@@ -19,20 +18,19 @@ const args = argparser.parseArgs();
 const env = new Env(null);
 addBuiltins(env);
 
-// Exec language files
-glob(path.join(__dirname, 'lang/*.egglisp'), function(err, filenames) {
-    if (err !== null) { throw err; }
-    filenames.forEach(execFile);
-});
+// Load Standard Lib
+execFile(path.join(__dirname, '../lang/stdlib.egglisp'));
 
-// Exec CLI-specified scripts
+// Load CLI specified script(s)
 args.scripts.forEach(execFile);
 
+// Run REPL
 if (args.interactive || args.scripts.length === 0) {
     repl();
 }
 
 function execFile(filename) {
+    console.log(`Executing ${filename}`);
     const script = fs.readFileSync(filename, "utf8");
     const parser = new EggParser();
     parser.readString(script);
@@ -40,7 +38,7 @@ function execFile(filename) {
         while (!parser.done()) {
             eggEval(parser.expr(), env);
             if (!parser.done()) {
-                parser.expect(T.WS)
+                parser.expect(T.WHITESPACE)
             }
         }
     } catch(err) {

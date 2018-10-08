@@ -6,10 +6,12 @@ export enum Type {
     SYMBOL = "symbol",
     STRING = "string",
     LIST = "list",
-    BUILTIN = "builtin",
+    QVAL = "qval",
+    BFUNCTION = "builtin function",
+    BMACRO = "builtin macro",
     FUNCTION = "function",
-    SPECIALFORM = "specialform",
-    MACRO = "macro"
+    MACRO = "macro",
+    CLOSURE = "closure"
 }
 
 export interface FBuiltin {
@@ -23,16 +25,13 @@ export interface EggValue {
     readonly name?: string,
     readonly numValue?: number,
     readonly strValue?: string,
-    readonly closure?: Env,
+    readonly closure?: EggValue,
     readonly params?: Array<string>,
+    readonly value?: EggValue,
+    readonly env?: Env,
     head?: EggValue,
     tail?: EggValue
-
 }
-
-export const NIL: EggValue = {type: Type.LIST, head: null, tail: null};
-export const TRUE: EggValue = {type: Type.BOOLEAN, numValue: 1};
-export const FALSE: EggValue = {type: Type.BOOLEAN, numValue: 0};
 
 export function typeOf(value: EggValue): Type {
     return value.type;
@@ -49,7 +48,7 @@ export function typeAssert(value: EggValue, ...types: Array<Type>) {
 
 export function specialform(func, name): EggValue {
     return {
-        type: Type.SPECIALFORM,
+        type: Type.BMACRO,
         func: func,
         name: name
     }
@@ -62,7 +61,7 @@ export function bool(value: number | boolean): EggValue {
 }
 export function builtin(func, name): EggValue {
     return {
-        type: Type.BUILTIN,
+        type: Type.BFUNCTION,
         func: func,
         name: name
     }
@@ -70,6 +69,14 @@ export function builtin(func, name): EggValue {
 export function func(body, params, closure): EggValue {
     return {
         type: Type.FUNCTION,
+        body: body,
+        closure: closure,
+        params: params
+    }
+}
+export function macro(body, params, closure): EggValue {
+    return {
+        type: Type.MACRO,
         body: body,
         closure: closure,
         params: params
@@ -103,4 +110,23 @@ export function list(head, tail): EggValue {
         tail: tail
     }
 }
+export function qval(value: EggValue): EggValue {
+    return {
+        type: Type.QVAL,
+        value: value
+    }
+}
+export function closure(env: Env): EggValue {
+    return {
+        type: Type.CLOSURE,
+        env: env
+    }
+}
+
+export const NIL: EggValue = {type: Type.LIST, head: null, tail: null};
+export const TRUE: EggValue = {type: Type.BOOLEAN, numValue: 1};
+export const FALSE: EggValue = {type: Type.BOOLEAN, numValue: 0};
+export const INF: EggValue = number(Infinity);
+export const NAN: EggValue = number(NaN);
+
 

@@ -1,0 +1,22 @@
+(def let
+     (m (syms vals body)
+        (cons (list f syms body) vals)))
+
+(def let
+     (let (f) (f)
+          (m (syms vals body)
+             (cons (list f syms body) vals))))
+
+(def defmacro
+     (let (def m) (def m)
+          (m (symbol args body) (list def symbol (list m args body)))))
+
+(def defun
+     (let (def f) (def f)
+          (m (symbol args body) (list def symbol (list f args body)))))
+
+(defun apply (func lst) (eval (cons func lst)))
+
+(defun swap (lst) (cons (head (tail lst)) (cons (head lst) (tail (tail lst)))))
+
+(def empty? nil?)

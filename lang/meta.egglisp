@@ -1,1 +1,0 @@
-(def apply (f (func lst) (eval (cons func lst))))
