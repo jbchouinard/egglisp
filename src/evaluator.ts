@@ -1,5 +1,5 @@
 import { ArgumentError, RuntimeError } from "./errors";
-import { EggValue, Type, typeOf, typeAssert, NIL, FALSE } from "./types";
+import { EggValue, Type, typeOf, typeAssert, NIL, TRUE } from "./types";
 import Env from "./env";
 
 function repr_env(env: Env): string {
@@ -8,7 +8,16 @@ function repr_env(env: Env): string {
         const [name, value] = entry;
         parts.push(`${name}=${repr(value)}`);
     }
-    return `{${parts.join(', ')}}`
+    return `{\n    ${parts.join(',\n    ')}\n}`
+}
+
+export function toString(value: EggValue): string {
+    switch (typeOf(value)) {
+        case Type.STRING:
+            return value.strValue;
+        default:
+            return repr(value);
+    }
 }
 
 export function repr(value: EggValue): string {
@@ -16,11 +25,7 @@ export function repr(value: EggValue): string {
         case Type.NUMBER:
             return `${value.numValue}`;
         case Type.BOOLEAN:
-            if (value === FALSE) {
-                return "false";
-            } else {
-                return "true";
-            }
+            return value === TRUE ? "#t" : "#f";
         case Type.STRING:
             return `"${value.strValue}"`;
         case Type.SYMBOL:
@@ -40,7 +45,7 @@ export function repr(value: EggValue): string {
             return `(${parts.join(' ')})`;
         case Type.QVAL:
             return `'${repr(value.value)}`;
-        case Type.CLOSURE:
+        case Type.ENVIRONMENT:
             return `<${typeOf(value)} ${repr_env(value.env)}>`;
         default:
             return `<${typeOf(value)}>`;
@@ -122,12 +127,13 @@ function applyBMacro(bmacro: EggValue, args: EggValue, env: Env) {
     return bmacro.func(args, env);
 }
 
+
 function applyFunction(func: EggValue, args: EggValue, env: Env) {
     let argsArr = getArgs(args, func.params.length);
     argsArr = argsArr.map(a => eggEval(a, env));
     const locals = new Env(func.closure.env);
     for (let i = 0; i < func.params.length; i++) {
-        locals.set(func.params[i], argsArr[i]);
+        locals.def(func.params[i], argsArr[i]);
     }
     return eggEval(func.body, locals);
 }
@@ -139,7 +145,7 @@ function applyMacro(macro: EggValue, args: EggValue, env: Env) {
     let argsArr = getArgs(args, macro.params.length);
     const locals = new Env(macro.closure.env);
     for (let i = 0; i < macro.params.length; i++) {
-        locals.set(macro.params[i], argsArr[i]);
+        locals.def(macro.params[i], argsArr[i]);
     }
     let result = eggEval(macro.body, locals);
     result = eggEval(result, env);

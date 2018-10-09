@@ -8,6 +8,7 @@ export enum T {
     SYMBOL = "t_SYMBOL",
     QUOTE = "t_QUOTE",
     WHITESPACE = "t_WHITESPACE",
+    COMMENT = "t_COMMENT",
     EOF = "t_EOF"
 }
 
@@ -19,39 +20,55 @@ interface Token {
     readonly colno:  number
 }
 
+const tokenDefinitions = [
+    { type: T.STRING, regex: /^"([^"]*")/ },
+    { type: T.NUMBER, regex: /^(((\d+(\.\d*)?)|(\.\d+))([eE]\d+)?)/ },
+    { type: T.LPARENS, regex: /^(\()/ },
+    { type: T.RPARENS, regex: /^(\))/ },
+    { type: T.QUOTE, regex: /^(')/ },
+    { type: T.SYMBOL, regex: /^([a-zA-Z_!?\\/+\-<>=*%][a-zA-Z_!?\\/+\-<>=*%\d]*)/ },
+    { type: T.COMMENT, regex: /^;([^\n]*)/ }
+];
+
 export function* tokenize(text: string): IterableIterator<Token> {
-    let match;
     let lineno = 1;
     let colno = 1;
     while (text.length > 0) {
+        let match;
         if (match = /^[\s\r\n]+/.exec(text)) {
-            yield {type: T.WHITESPACE, lineno: lineno, colno: colno};
+            yield {
+                type: T.WHITESPACE,
+                lineno: lineno,
+                colno: colno
+            };
             let newlines;
-            if (newlines = /\r?\n/g.exec(match[0])) {
+            if (newlines = match[0].match(/\r?\n/g)) {
                 lineno += newlines.length;
                 colno = /[^\r\n]*$/.exec(match[0])[0].length + 1;
             } else {
                 colno += match[0].length;
             }
-        } else {
-            if (match = /^"([^"]*)"/.exec(text)) {
-                yield {type: T.STRING, value: match[1], lineno: lineno, colno: colno};
-            } else if (match = /^(((\d+(\.\d*)?)|(\.\d+))([eE]\d+)?)/.exec(text)) {
-                yield {type: T.NUMBER, value: match[1], lineno: lineno, colno: colno};
-            } else if (match = /^\(/.exec(text)) {
-                yield {type: T.LPARENS, lineno: lineno, colno: colno};
-            } else if (match = /^\)/.exec(text)) {
-                yield {type: T.RPARENS, lineno: lineno, colno: colno};
-            } else if (match = /^'/.exec(text)) {
-                yield {type: T.QUOTE, lineno: lineno, colno: colno};
-            } else if (match = /^(([a-zA-Z_][a-zA-Z_!?\-\d]*)|([+\-\\/<>=*]+))/.exec(text)) {
-                yield {type: T.SYMBOL, name: match[1], lineno: lineno, colno: colno}
-            } else {
-                throw SyntaxError(`Unexpected syntax at ${lineno}:${colno}`);
-            }
-            colno += match[0].length;
+            text = text.slice(match[0].length);
+            continue;
         }
-        text = text.slice(match[0].length)
+        for (let tok of tokenDefinitions) {
+            if (match = tok.regex.exec(text)) {
+                if (tok.type !== T.COMMENT) {
+                    yield {
+                        type: tok.type,
+                        value: match[1],
+                        colno: colno,
+                        lineno: lineno
+                    };
+                }
+                colno += match[0].length;
+                text = text.slice(match[0].length);
+                break;
+            }
+        }
+        if (!match) {
+            throw SyntaxError(`Unexpected syntax at ${lineno}:${colno}`);
+        }
     }
     yield {type: T.EOF, lineno: lineno, colno: colno};
 }
@@ -96,13 +113,13 @@ export class EggParser {
         return this.peek.type === T.EOF;
     }
     assert_done() {
-        this.eat(T.WHITESPACE);
+        this.whitespace();
         if (!this.done()) {
             throw(SyntaxError(`Expected end of input at ${this.loc()}`));
         }
     }
     expr(): types.EggValue {
-        this.eat(T.WHITESPACE);
+        this.whitespace();
         switch(this.peek.type) {
             case T.QUOTE:
                 return this.qval();
@@ -117,8 +134,11 @@ export class EggParser {
             case T.EOF:
                 throw SyntaxError("Unexpected end of input");
             default:
-                throw SyntaxError(`Unexpected token ${this.peek.type} at ${this.loc}`)
+                throw SyntaxError(`Unexpected token ${this.peek.type} at ${this.loc()}`)
         }
+    }
+    whitespace(): void {
+        while (this.eat(T.WHITESPACE)) {}
     }
     qval(): types.EggValue {
         this.expect(T.QUOTE);
@@ -134,11 +154,11 @@ export class EggParser {
     }
     symbol(): types.EggValue {
         let sym = this.expect(T.SYMBOL);
-        return types.symbol(sym.name);
+        return types.symbol(sym.value);
     }
     list(): types.EggValue {
         this.expect(T.LPARENS);
-        this.eat(T.WHITESPACE);
+        this.whitespace();
 
         // Empty list
         if (this.eat(T.RPARENS)) { return types.NIL; }
@@ -149,6 +169,7 @@ export class EggParser {
         let tail = head;
         while (!this.eat(T.RPARENS)) {
             this.expect(T.WHITESPACE);
+            this.whitespace();
             tail.tail = types.list(this.expr(), types.NIL);
             tail = tail.tail;
         }

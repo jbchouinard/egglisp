@@ -42,6 +42,7 @@ function execFile(filename) {
             }
         }
     } catch(err) {
+        console.log(err.stack);
         console.log(`Error at line ${parser.loc()}`);
         console.log(err.message);
     }
@@ -62,7 +63,7 @@ function repl() {
             parser.assert_done();
             console.log(repr(eggEval(expr, env)));
         } catch(err) {
-            // console.log(err.stack);
+            console.log(err.stack);
             console.log(`${err.constructor.name}: ${err.message}`);
         }
         rl.prompt();

@@ -6,12 +6,12 @@ export enum Type {
     SYMBOL = "symbol",
     STRING = "string",
     LIST = "list",
-    QVAL = "qval",
-    BFUNCTION = "builtin function",
-    BMACRO = "builtin macro",
+    QVAL = "quoted-value",
+    BFUNCTION = "builtin-function",
+    BMACRO = "builtin-macro",
     FUNCTION = "function",
     MACRO = "macro",
-    CLOSURE = "closure"
+    ENVIRONMENT = "environment"
 }
 
 export interface FBuiltin {
@@ -20,15 +20,22 @@ export interface FBuiltin {
 
 export interface EggValue {
     readonly type: Type,
+    // Functions and macros
     readonly func?: FBuiltin,
-    readonly body?: EggValue,
-    readonly name?: string,
-    readonly numValue?: number,
-    readonly strValue?: string,
-    readonly closure?: EggValue,
     readonly params?: Array<string>,
+    readonly body?: EggValue,
+    readonly closure?: EggValue, // points to a Closure obj.
+    // Symbols
+    readonly name?: string,
+    // Numbers and booleans
+    readonly numValue?: number,
+    // Strings
+    readonly strValue?: string,
+    // Quoted values
     readonly value?: EggValue,
+    // Closures
     readonly env?: Env,
+    // Lists
     head?: EggValue,
     tail?: EggValue
 }
@@ -116,9 +123,9 @@ export function qval(value: EggValue): EggValue {
         value: value
     }
 }
-export function closure(env: Env): EggValue {
+export function environment(env: Env): EggValue {
     return {
-        type: Type.CLOSURE,
+        type: Type.ENVIRONMENT,
         env: env
     }
 }

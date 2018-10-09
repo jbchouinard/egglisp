@@ -1,22 +1,30 @@
 (def let
-     (m (syms vals body)
-        (cons (list f syms body) vals)))
+     (macro (syms vals body)
+            (cons (list fn syms body) vals)))
 
-(def let
-     (let (f) (f)
-          (m (syms vals body)
-             (cons (list f syms body) vals))))
+; Basic functions and macros are wrapped in lets so they keep a closure with necessary
+; globals so they dont break if the global bindings change
+(set* let
+     (let (fn) (fn)
+          (macro (syms vals body)
+                 (cons (list fn syms body) vals))))
 
 (def defmacro
-     (let (def m) (def m)
-          (m (symbol args body) (list def symbol (list m args body)))))
+     (let (def macro) (def macro)
+          (macro (symbol args body) (list def symbol (list macro args body)))))
 
-(def defun
-     (let (def f) (def f)
-          (m (symbol args body) (list def symbol (list f args body)))))
+(def defn
+     (let (def fn macro) (def fn macro)
+          (macro (symbol args body) (list def symbol (list fn args body)))))
 
-(defun apply (func lst) (eval (cons func lst)))
+(def apply
+     (let (cons eval) (cons eval)
+          (fn (func lst) (eval (cons func lst)))))
 
-(defun swap (lst) (cons (head (tail lst)) (cons (head lst) (tail (tail lst)))))
+(set! quote
+      (let (list apply) (list apply)
+           (macro (l) (apply list l))))
+
+(defn swap (lst) (cons (head (tail lst)) (cons (head lst) (tail (tail lst)))))
 
 (def empty? nil?)
