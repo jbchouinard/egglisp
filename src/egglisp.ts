@@ -11,6 +11,7 @@ import { EggParser, T } from "./parser";
 
 const argparser = new ArgumentParser({description: "egglisp v0.1.0"});
 argparser.addArgument(["-i", "--interactive"], {action: "storeTrue", help: "Start REPL"});
+argparser.addArgument(["--stack"], {action: "storeTrue", help: "Print stack traces"});
 argparser.addArgument("scripts", {nargs: '*'});
 const args = argparser.parseArgs();
 
@@ -32,24 +33,19 @@ if (args.interactive || args.scripts.length === 0) {
 function execFile(filename) {
     console.log(`Executing ${filename}`);
     const script = fs.readFileSync(filename, "utf8");
-    const parser = new EggParser();
-    parser.readString(script);
+    const parser = new EggParser(script);
     try {
-        while (!parser.done()) {
+        while (!parser.done) {
             eggEval(parser.expr(), env);
-            if (!parser.done()) {
-                parser.expect(T.WHITESPACE)
-            }
+            parser.takeAny(T.WHITESPACE)
         }
     } catch(err) {
-        console.log(err.stack);
-        console.log(`Error at line ${parser.loc()}`);
+        if (args.stack) { console.log(err.stack); }
         console.log(err.message);
     }
 }
 
 function repl() {
-    const parser = new EggParser();
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
@@ -58,12 +54,12 @@ function repl() {
     rl.prompt();
     rl.on('line', (line) => {
         try {
-            parser.readString(line);
+            const parser = new EggParser(line);
             let expr = parser.expr();
-            parser.assert_done();
+            parser.assertDone();
             console.log(repr(eggEval(expr, env)));
         } catch(err) {
-            console.log(err.stack);
+            if (args.stack) { console.log(err.stack); }
             console.log(`${err.constructor.name}: ${err.message}`);
         }
         rl.prompt();

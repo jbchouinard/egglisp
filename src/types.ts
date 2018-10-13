@@ -22,7 +22,7 @@ export interface EggValue {
     readonly type: Type,
     // Functions and macros
     readonly func?: FBuiltin,
-    readonly params?: Array<string>,
+    readonly params?: EggValue,
     readonly body?: EggValue,
     readonly closure?: EggValue, // points to a Closure obj.
     // Symbols

@@ -1,30 +1,31 @@
-(def let
-     (macro (syms vals body)
-            (cons (list fn syms body) vals)))
-
-; Basic functions and macros are wrapped in lets so they keep a closure with necessary
-; globals so they dont break if the global bindings change
-(set* let
-     (let (fn) (fn)
-          (macro (syms vals body)
-                 (cons (list fn syms body) vals))))
+(def empty? nil?)
 
 (def defmacro
-     (let (def macro) (def macro)
-          (macro (symbol args body) (list def symbol (list macro args body)))))
+    (macro (symbol args body)
+        (list def symbol (list macro args body))))
 
-(def defn
-     (let (def fn macro) (def fn macro)
-          (macro (symbol args body) (list def symbol (list fn args body)))))
+(defmacro defn (symbol args body)
+    (list def symbol (list fn args body)))
 
-(def apply
-     (let (cons eval) (cons eval)
-          (fn (func lst) (eval (cons func lst)))))
+(defmacro let (syms vals body)
+    (cons (list fn syms body) vals))
 
-(set! quote
-      (let (list apply) (list apply)
-           (macro (l) (apply list l))))
+(defn apply (func lst)
+    (eval (cons func lst)))
 
-(defn swap (lst) (cons (head (tail lst)) (cons (head lst) (tail (tail lst)))))
+(defn swap (lst)
+    (cons (head (tail lst))
+        (cons (head lst)
+            (tail (tail lst)))))
 
-(def empty? nil?)
+; So we can write (cond ((...) (...) (else (...))))
+(def else true)
+
+(defmacro cond (conds) (begin
+    (defn rec (conds)
+        (if (empty? conds)
+            nil
+            (list if (head (head conds))
+                (head (tail (head conds)))
+                (rec (tail conds)))))
+    (rec conds)))

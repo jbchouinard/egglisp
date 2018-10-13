@@ -21,7 +21,7 @@ interface Token {
 }
 
 const tokenDefinitions = [
-    { type: T.STRING, regex: /^"([^"]*")/ },
+    { type: T.STRING, regex: /^"([^"]*)"/ },
     { type: T.NUMBER, regex: /^(((\d+(\.\d*)?)|(\.\d+))([eE]\d+)?)/ },
     { type: T.LPARENS, regex: /^(\()/ },
     { type: T.RPARENS, regex: /^(\))/ },
@@ -70,52 +70,56 @@ export function* tokenize(text: string): IterableIterator<Token> {
             throw SyntaxError(`Unexpected syntax at ${lineno}:${colno}`);
         }
     }
-    yield {type: T.EOF, lineno: lineno, colno: colno};
+    yield {type: T.EOF, value: null, lineno: lineno, colno: colno};
 }
-
 
 export class EggParser {
     tokens: Iterator<Token>;
     peek: Token;
-    readString(text: string) {
-        this.readTokens(tokenize(text));
+    previous: Token;
+    done: boolean;
+    constructor(text: string) {
+        this.tokens = tokenize(text);
+        this.done = false;
+        this.peek = {type: null, value: null, colno: 0, lineno: 0};
+        this.previous = this.peek;
+        this.next();
     }
-    readTokens(tokens: Iterator<Token>) {
-        this.tokens = tokens;
-        this.peek = {type: null, colno: 0, lineno: 0};
-        this.next(); // Read in first token
+    loc(token: Token): string {
+        return `${token.type}[${token.value}] at ${token.lineno}:${token.colno}`;
     }
     next(): Token {
-        if (this.peek.type === T.EOF) {
-            throw SyntaxError("End of input reached")
+        if (this.done) {
+            throw SyntaxError(`End of input reached unexpectedly after ${this.loc(this.previous)}`)
         }
-        const peek = this.peek;
+        if (this.peek.type === T.EOF) {
+            this.done = true;
+            return this.peek;
+        }
+        this.previous = this.peek;
         this.peek = this.tokens.next().value;
-        return peek;
+        return this.previous;
     }
-    loc(): string {
-        return `${this.peek.lineno}:${this.peek.colno}`
+    takeAny(token_type: T): number {
+        let eaten = 0;
+        while (this.peek.type === token_type) {
+            this.next();
+            eaten++;
+        }
+        return eaten;
     }
-    expect(token_type: T): Token {
+    takeOne(token_type: T): Token {
         if (this.peek.type !== token_type) {
-            throw SyntaxError(`Expected ${token_type} at ${this.loc()} but got ${this.peek.type}`);
+            throw SyntaxError(`Expected ${token_type} but got ${this.loc(this.peek)}`);
         }
         return this.next();
     }
-    eat(token_type: T): boolean {
-        if (this.peek.type === token_type) {
-            this.next();
-            return true;
-        }
-        return false;
-    }
-    done(): boolean {
-        return this.peek.type === T.EOF;
-    }
-    assert_done() {
-        this.whitespace();
-        if (!this.done()) {
-            throw(SyntaxError(`Expected end of input at ${this.loc()}`));
+    assertDone() {
+        // If we are not done, try reading EOF
+        // takeOne will throw if there are non-whitespace tokens left
+        if (!this.done) {
+            this.whitespace();
+            this.takeOne(T.EOF);
         }
     }
     expr(): types.EggValue {
@@ -131,49 +135,51 @@ export class EggParser {
                 return this.symbol();
             case T.LPARENS:
                 return this.list();
-            case T.EOF:
-                throw SyntaxError("Unexpected end of input");
             default:
-                throw SyntaxError(`Unexpected token ${this.peek.type} at ${this.loc()}`)
+                throw SyntaxError(`Unexpected token ${this.loc(this.peek)}`)
         }
     }
-    whitespace(): void {
-        while (this.eat(T.WHITESPACE)) {}
+    whitespace(optional: boolean=true) {
+        const n = this.takeAny(T.WHITESPACE);
+        if (!optional && n === 0) {
+            throw SyntaxError(`Expected whitespace, got ${this.loc(this.peek)}`)
+        }
     }
     qval(): types.EggValue {
-        this.expect(T.QUOTE);
+        this.takeOne(T.QUOTE);
         return types.qval(this.expr());
     }
     number(): types.EggValue {
-        let num = this.expect(T.NUMBER);
+        let num = this.takeOne(T.NUMBER);
         return types.number(num.value);
     }
     string(): types.EggValue {
-        let str = this.expect(T.STRING);
+        let str = this.takeOne(T.STRING);
         return types.string(str.value);
     }
     symbol(): types.EggValue {
-        let sym = this.expect(T.SYMBOL);
+        let sym = this.takeOne(T.SYMBOL);
         return types.symbol(sym.value);
     }
     list(): types.EggValue {
-        this.expect(T.LPARENS);
+        this.takeOne(T.LPARENS);
         this.whitespace();
-
         // Empty list
-        if (this.eat(T.RPARENS)) { return types.NIL; }
-
+        if (this.peek.type === T.RPARENS) {
+            this.next();
+            return types.NIL;
+        }
         // Non-empty list:  create 1-element list, then add elements at the end
         // until we hit a closing parens
         const head = types.list(this.expr(), types.NIL);
         let tail = head;
-        while (!this.eat(T.RPARENS)) {
-            this.expect(T.WHITESPACE);
-            this.whitespace();
+        // @ts-ignore
+        while (this.peek.type !== T.RPARENS) {
+            this.whitespace(false);
             tail.tail = types.list(this.expr(), types.NIL);
             tail = tail.tail;
         }
+        this.takeOne(T.RPARENS);
         return head;
     }
 }
-

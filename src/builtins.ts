@@ -37,7 +37,7 @@ function fHead(args: EggValue): EggValue {
     const arg = getArgs(args, 1)[0];
     typeAssert(arg, Type.LIST);
     if (arg === NIL) {
-        throw new ArgumentError('Cannot take head of empty list (nil)');
+        throw new ArgumentError('Cannot takeOne head of empty list (nil)');
     }
     return arg.head;
 }
@@ -45,7 +45,7 @@ function fTail(args: EggValue): EggValue {
     const arg = getArgs(args, 1)[0];
     typeAssert(arg, Type.LIST);
     if (arg === NIL) {
-        throw new ArgumentError('Cannot take tail of empty list (nil)');
+        throw new ArgumentError('Cannot takeOne tail of empty list (nil)');
     }
     return arg.tail;
 }
@@ -85,8 +85,14 @@ function fTypeOf(args: EggValue): EggValue {
     const arg = getArgs(args, 1)[0];
     return string(typeOf(arg));
 }
-function fGlobals(args: EggValue, env: Env): EggValue {
+function fEnv(args: EggValue, env: Env): EggValue {
     getArgs(args, 0);
+    return environment(env);
+}
+function fGlobals(args: EggValue, env: Env): EggValue {
+    while (env.parent !== null) {
+        env = env.parent;
+    }
     return environment(env);
 }
 function fRepr(args: EggValue): EggValue {
@@ -119,24 +125,22 @@ function mSetNonLocal(args: EggValue, env: Env): EggValue {
     return NIL;
 }
 function mFunc(args: EggValue, env: Env): EggValue {
-    let [symbols, body] = getArgs(args, 2);
-    const symArray = [];
+    const [headSymbols, body] = getArgs(args, 2);
+    let symbols = headSymbols;
     while (symbols !== NIL) {
         typeAssert(symbols.head, Type.SYMBOL);
-        symArray.push(symbols.head.name);
         symbols = symbols.tail;
     }
-    return func(body, symArray, environment(env))
+    return func(body, headSymbols, environment(env))
 }
 function mMacro(args: EggValue, env: Env): EggValue {
-    let [symbols, body] = getArgs(args, 2);
-    const symArray = [];
+    const [headSymbols, body] = getArgs(args, 2);
+    let symbols = headSymbols;
     while (symbols !== NIL) {
         typeAssert(symbols.head, Type.SYMBOL);
-        symArray.push(symbols.head.name);
         symbols = symbols.tail;
     }
-    return macro(body, symArray, environment(env));
+    return macro(body, headSymbols, environment(env));
 }
 function mQuote(args: EggValue): EggValue {
     return getArgs(args, 1)[0];
@@ -150,6 +154,14 @@ function mIf(args: EggValue, env: Env): EggValue {
         return eggEval(iffalse, env);
     }
     throw new ArgumentError("First argument must be boolean");
+}
+function mBegin(args: EggValue, env: Env): EggValue {
+    let lastResult = NIL;
+    while (args !== NIL) {
+        lastResult = eggEval(args.head, env);
+        args = args.tail;
+    }
+    return lastResult;
 }
 
 
@@ -174,8 +186,10 @@ export function addBuiltins(env: Env) {
     addMacro(env, "fn", mFunc);
     addMacro(env, "macro", mMacro);
     addMacro(env, "if", mIf);
+    addMacro(env, "begin", mBegin);
     addFunc(env, "is?", fIs);
     addFunc(env, "inspect", fInspect);
+    addFunc(env, "env", fEnv);
     addFunc(env, "globals", fGlobals);
     addFunc(env, "type-of", fTypeOf);
     addFunc(env, "print", fPrint);

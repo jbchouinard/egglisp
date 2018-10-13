@@ -6,7 +6,11 @@ function repr_env(env: Env): string {
     const parts = [];
     for(let entry of env.bindings.entries()) {
         const [name, value] = entry;
-        parts.push(`${name}=${repr(value)}`);
+        if (typeOf(value) === Type.ENVIRONMENT) {
+            parts.push(`${name}=<environment {...}>`)
+        } else {
+            parts.push(`${name}=${repr(value)}`);
+        }
     }
     return `{\n    ${parts.join(',\n    ')}\n}`
 }
@@ -35,7 +39,7 @@ export function repr(value: EggValue): string {
             return `<${typeOf(value)} "${value.name}">`;
         case Type.FUNCTION:
         case Type.MACRO:
-            return `<${typeOf(value)} (${value.params.join(' ')}) -> ${repr(value.body)}>`;
+            return `<${typeOf(value)} ${repr(value.params)}->${repr(value.body)}>`;
         case Type.LIST:
             const parts = [];
             while (value.tail !== null) {
@@ -129,27 +133,34 @@ function applyBMacro(bmacro: EggValue, args: EggValue, env: Env) {
 
 
 function applyFunction(func: EggValue, args: EggValue, env: Env) {
-    let argsArr = getArgs(args, func.params.length);
-    argsArr = argsArr.map(a => eggEval(a, env));
     const locals = new Env(func.closure.env);
-    for (let i = 0; i < func.params.length; i++) {
-        locals.def(func.params[i], argsArr[i]);
+    let symbols = func.params;
+    while (args !== NIL) {
+       if (symbols === NIL) {
+           throw new RuntimeError("Too many arguments")
+       }
+       locals.def(symbols.head.name, eggEval(args.head, env));
+       args = args.tail;
+       symbols = symbols.tail;
     }
+    if (symbols !== NIL) { throw new RuntimeError("Too few arguments")}
     return eggEval(func.body, locals);
 }
 
-// Instead of sending evaluated arguments, macros get them
-// unevaluated, then the *return value* of the macro is evaluated,
-// They are meant to manipulate code
 function applyMacro(macro: EggValue, args: EggValue, env: Env) {
-    let argsArr = getArgs(args, macro.params.length);
     const locals = new Env(macro.closure.env);
-    for (let i = 0; i < macro.params.length; i++) {
-        locals.def(macro.params[i], argsArr[i]);
+    let symbols = macro.params;
+    while (args !== NIL) {
+        if (symbols === NIL) {
+            throw new RuntimeError("Too many arguments")
+        }
+        locals.def(symbols.head.name, args.head);
+        args = args.tail;
+        symbols = symbols.tail;
     }
-    let result = eggEval(macro.body, locals);
-    result = eggEval(result, env);
-    return result;
+    if (symbols !== NIL) { throw new RuntimeError("Too few arguments")}
+    const modifiedCode = (eggEval(macro.body, locals));
+    return eggEval(modifiedCode, env);
 }
 
 export function apply(callable: EggValue, args: EggValue, env: Env) {

@@ -1,0 +1,5 @@
+(defn test-cond (x)
+    (cond (
+        ((is? x true) (print "x is true"))
+        ((is? x false) (print "x is false"))
+        (else (print "x is something else")))))
